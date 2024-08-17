@@ -44,6 +44,10 @@
             border: 1px solid #ccc;
             border-radius: 5px;
         }
+        .input-group select {
+            appearance: none;
+            background-color: #f4f4f4;
+        }
         .tracker-table {
             width: 100%;
             border-collapse: collapse;
@@ -74,9 +78,24 @@
             border: none;
             border-radius: 5px;
             cursor: pointer;
+            margin-right: 10px;
         }
         .actions button:hover {
             background-color: #006666;
+        }
+        .tips {
+            background-color: #e0f7fa;
+            padding: 10px;
+            margin-top: 20px;
+            border-radius: 5px;
+            font-size: 0.9rem;
+            text-align: left;
+        }
+        .tips h3 {
+            margin-top: 0;
+        }
+        .chart {
+            margin-top: 20px;
         }
     </style>
 </head>
@@ -90,6 +109,16 @@
     <div class="input-group">
         <label for="food-name">Food Name:</label>
         <input type="text" id="food-name" placeholder="Enter food name">
+    </div>
+
+    <div class="input-group">
+        <label for="meal-type">Meal Type:</label>
+        <select id="meal-type">
+            <option value="breakfast">Breakfast</option>
+            <option value="lunch">Lunch</option>
+            <option value="dinner">Dinner</option>
+            <option value="snack">Snack</option>
+        </select>
     </div>
 
     <div class="input-group">
@@ -115,11 +144,13 @@
     <div class="actions">
         <button onclick="addFood()">Add Food</button>
         <button onclick="clearTable()">Clear Tracker</button>
+        <button onclick="generateReport()">Generate Report</button>
     </div>
 
     <table class="tracker-table">
         <thead>
             <tr>
+                <th>Meal Type</th>
                 <th>Food Name</th>
                 <th>Calories (kcal)</th>
                 <th>Carbs (g)</th>
@@ -134,6 +165,7 @@
         <tfoot>
             <tr class="total-row">
                 <td>Total</td>
+                <td></td>
                 <td id="total-calories">0</td>
                 <td id="total-carbs">0</td>
                 <td id="total-proteins">0</td>
@@ -142,11 +174,31 @@
             </tr>
         </tfoot>
     </table>
+
+    <div class="tips" id="health-tips">
+        <h3>Health Tips:</h3>
+        <p id="tip"></p>
+    </div>
+
+    <div class="chart" id="nutrition-chart">
+        <h3>Nutrient Distribution</h3>
+        <!-- Placeholder for a chart that will display nutrient distribution -->
+        <canvas id="chartCanvas" width="400" height="200"></canvas>
+    </div>
 </div>
 
 <script>
+    const healthTips = [
+        "Drink plenty of water throughout the day.",
+        "Include a variety of fruits and vegetables in your diet.",
+        "Avoid processed foods and opt for whole grains.",
+        "Eat smaller, more frequent meals to maintain energy levels.",
+        "Limit your intake of sugary drinks and snacks."
+    ];
+
     function addFood() {
         const foodName = document.getElementById('food-name').value;
+        const mealType = document.getElementById('meal-type').value;
         const calories = parseFloat(document.getElementById('calories').value);
         const carbs = parseFloat(document.getElementById('carbs').value);
         const proteins = parseFloat(document.getElementById('proteins').value);
@@ -159,15 +211,18 @@
 
         const trackerBody = document.getElementById('tracker-body');
         const row = trackerBody.insertRow();
-        row.insertCell(0).innerText = foodName;
-        row.insertCell(1).innerText = calories;
-        row.insertCell(2).innerText = carbs;
-        row.insertCell(3).innerText = proteins;
-        row.insertCell(4).innerText = fats;
-        const removeCell = row.insertCell(5);
+        row.insertCell(0).innerText = mealType;
+        row.insertCell(1).innerText = foodName;
+        row.insertCell(2).innerText = calories;
+        row.insertCell(3).innerText = carbs;
+        row.insertCell(4).innerText = proteins;
+        row.insertCell(5).innerText = fats;
+        const removeCell = row.insertCell(6);
         removeCell.innerHTML = '<button onclick="removeFood(this)">Remove</button>';
 
         updateTotals(calories, carbs, proteins, fats);
+        updateHealthTip();
+        updateChart();
 
         document.getElementById('food-name').value = '';
         document.getElementById('calories').value = '';
@@ -190,13 +245,14 @@
 
     function removeFood(button) {
         const row = button.parentElement.parentElement;
-        const calories = parseFloat(row.cells[1].innerText);
-        const carbs = parseFloat(row.cells[2].innerText);
-        const proteins = parseFloat(row.cells[3].innerText);
-        const fats = parseFloat(row.cells[4].innerText);
+        const calories = parseFloat(row.cells[2].innerText);
+        const carbs = parseFloat(row.cells[3].innerText);
+        const proteins = parseFloat(row.cells[4].innerText);
+        const fats = parseFloat(row.cells[5].innerText);
 
         updateTotals(-calories, -carbs, -proteins, -fats);
         row.remove();
+        updateChart();
     }
 
     function clearTable() {
@@ -205,8 +261,51 @@
         document.getElementById('total-carbs').innerText = '0';
         document.getElementById('total-proteins').innerText = '0';
         document.getElementById('total-fats').innerText = '0';
+        updateChart();
+    }
+
+    function updateHealthTip() {
+        const tip = healthTips[Math.floor(Math.random() * healthTips.length)];
+        document.getElementById('tip').innerText = tip;
+    }
+
+    function updateChart() {
+        const calories = parseFloat(document.getElementById('total-calories').innerText);
+        const carbs = parseFloat(document.getElementById('total-carbs').innerText);
+        const proteins = parseFloat(document.getElementById('total-proteins').innerText);
+        const fats = parseFloat(document.getElementById('total-fats').innerText);
+
+        const ctx = document.getElementById('chartCanvas').getContext('2d');
+        const chartData = [carbs, proteins, fats];
+
+        if (window.myChart) {
+            window.myChart.destroy();
+        }
+
+        window.myChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Carbs', 'Proteins', 'Fats'],
+                datasets: [{
+                    data: chartData,
+                    backgroundColor: ['#ffcd56', '#36a2eb', '#ff6384'],
+                    hoverBackgroundColor: ['#ffcd56', '#36a2eb', '#ff6384'],
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false
+            }
+        });
+    }
+
+    function generateReport() {
+        alert("Report generated!\nTotal Calories: " + document.getElementById('total-calories').innerText +
+              "\nTotal Carbs: " + document.getElementById('total-carbs').innerText + "g" +
+              "\nTotal Proteins: " + document.getElementById('total-proteins').innerText + "g" +
+              "\nTotal Fats: " + document.getElementById('total-fats').innerText + "g");
     }
 </script>
-
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </body>
 </html>
